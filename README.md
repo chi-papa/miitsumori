@@ -1,8 +1,7 @@
-# Mitsumori — 見積書・請求書・領収書メーカー
+# Mitsumori — 見積書・請求書・領収書・納品書メーカー
 
 インストール不要。
-ブラウザで開くだけで使える、日本語対応の見積書・請求書・領収書ジェネレーター。
-
+ブラウザで開くだけで使える、日本語対応のビジネス書類ジェネレーター。
 HTML / CSS / JavaScript のみで構築された、完全ローカル動作のシングルファイルアプリです。
 
 ---
@@ -14,8 +13,10 @@ HTML / CSS / JavaScript のみで構築された、完全ローカル動作の�
 * 見積書
 * 請求書
 * 領収書
+* 納品書
 
 書類種別を切り替えるだけで、タイトル・ラベル・表示項目を自動変更。
+納品書では「納品日」表示・「以上」締めに自動対応。
 
 ---
 
@@ -55,9 +56,7 @@ HTML / CSS / JavaScript のみで構築された、完全ローカル動作の�
 * 税抜
 * 非課税
 
-を切り替え可能。
-
-消費税を自動計算。
+を切り替え可能。消費税を自動計算。
 
 ---
 
@@ -121,8 +120,7 @@ localStorage に保存。
 * Firefox
 * Safari
 
-モダンブラウザ対応。
-Internet Explorer 非対応。
+モダンブラウザ対応。Internet Explorer 非対応。
 
 ---
 
@@ -149,7 +147,6 @@ README.md
 # 📄 ライセンス
 
 MIT License
-
 Copyright (c) 2026
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -171,3 +168,175 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
 * Meiryo
 
 （OS標準フォントを使用）
+
+
+# Mitsumori — Estimate, Invoice, Receipt & Delivery Note Generator
+
+No installation required.
+Just open it in your browser — a Japanese-ready business document generator.
+Built with HTML / CSS / JavaScript only. Runs entirely offline as a single-file app.
+
+---
+
+# ✨ Features
+
+## 📄 Multiple Document Types
+
+* Estimate (見積書)
+* Invoice (請求書)
+* Receipt (領収書)
+* Delivery Note (納品書)
+
+Switching document type automatically updates the title, labels, and visible fields.
+Delivery notes include a dedicated delivery date field and close with the traditional "以上" (end mark).
+
+---
+
+## ⚡ Zero Installation
+
+Just open `mitsumori.html` in your browser.
+
+* No server
+* No npm
+* No build step
+* No external libraries
+
+Fully offline.
+
+---
+
+## 🔢 Auto-Numbered Document IDs
+
+Generates sequential IDs in formats like:
+
+* `EST-20260512-001`
+* `INV-20260512-001`
+
+Automatically detects existing numbers and increments to the next.
+
+---
+
+## 🧾 Japanese Invoice (Qualified Invoice) Support
+
+Supports entry of the Qualified Invoice Issuer registration number (インボイス登録番号) as required under Japan's Invoice System.
+
+---
+
+## 💴 Tax Calculation Modes
+
+* Tax-inclusive (税込)
+* Tax-exclusive (税抜)
+* Tax-exempt (非課税)
+
+Consumption tax is calculated automatically.
+
+---
+
+## 🖨 A4 Preview & PDF Export
+
+Uses the browser's built-in print function for PDF output.
+
+* A4-optimized layout
+* Print-ready design
+* PDF export supported
+
+---
+
+## 💾 Document Storage
+
+Saved to `localStorage` in the browser.
+
+* Manage multiple documents
+* View saved document list
+* One-click reload
+* Re-edit anytime
+
+---
+
+## 🏢 Issuer Information
+
+The following fields can be saved and reused:
+
+* Company name
+* Address
+* Phone number
+* Contact name
+* Invoice registration number
+
+---
+
+## 📦 Line Items & Custom Fields
+
+* Add / remove line item rows
+* Enter quantity and unit price
+* Automatic amount calculation
+* Add custom condition rows
+* Notes field
+
+---
+
+# 🚀 How to Use
+
+1. Download `mitsumori.html`
+2. Open it in your browser
+3. Fill in the required fields
+4. Click "A4 Preview" to review
+5. Click "Print / Save as PDF" to export
+
+---
+
+# 🖥 Browser Compatibility
+
+* Google Chrome
+* Microsoft Edge
+* Firefox
+* Safari
+
+Requires a modern browser. Internet Explorer is not supported.
+
+---
+
+# 📁 File Structure
+
+```txt
+mitsumori.html
+README.md
+```
+
+That's all you need.
+
+---
+
+# 💾 About Data Storage
+
+All data is stored in your browser's `localStorage`.
+
+⚠️ Clearing browser data will also delete saved documents.
+PDF export is recommended for important records.
+
+---
+
+# 📄 License
+
+MIT License
+Copyright (c) 2026
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+---
+
+# 🙏 Credits
+
+Fonts:
+
+* Hiragino Kaku Gothic ProN
+* Hiragino Sans
+* Meiryo
+
+(OS system fonts — no external font loading)
