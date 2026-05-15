@@ -189,6 +189,7 @@
                         <option value="見積書">📋 見積書</option>
                         <option value="請求書">💴 請求書</option>
                         <option value="領収書">🧾 領収書</option>
+                        <option value="納品書">📦 納品書</option>
                     </select>
                 </div>
                 <div class="f-group"><label>発行日</label><input id="edate" type="date"></div>
@@ -372,7 +373,7 @@ function collect(){
 
 function onDoctype(){
   const dt=document.getElementById('doctype').value;
-  const label={見積書:'見積明細',請求書:'請求明細',領収書:'内訳明細'}[dt]||'明細';
+  const label={見積書:'見積明細',請求書:'請求明細',領収書:'内訳明細',納品書:'納品明細'}[dt]||'明細';
   document.getElementById('meisai-title').textContent=label;
 }
 
@@ -443,6 +444,7 @@ function buildPreview(){
   const pl=type==='included'?'（税込）':type==='excluded'?'（税抜）':'';
   const doctype=document.getElementById('doctype').value;
   const isEstimate=(doctype==='見積書');
+  const isDelivery=(doctype==='納品書');
 
   function drow(lbl,val){
     return`<div style="display:flex; border-bottom:1px solid #eee; margin-bottom:4px; font-size:11px">
@@ -495,7 +497,7 @@ function buildPreview(){
         ${drow('担当者', g('tc'))}
         ${isEstimate?drow('有効期限', g('exp')):''}
         ${isEstimate?drow('支払方法', g('pay')):''}
-        ${isEstimate?drow('納期', g('noki')):''}
+        ${(isEstimate||isDelivery)?drow(isDelivery?'納品日':'納期', g('noki')):''}
       </div>
       <div class="col-box">
         <div class="col-lbl">発行元</div>
@@ -520,7 +522,10 @@ function buildPreview(){
       <tbody>${filledRows}${emptyRows}</tbody>
     </table>
 
-    <table class="stbl">${totalRows}</table>
+    ${isDelivery
+      ? `<div style="text-align:right; font-size:13px; margin:8px 0 4px; font-weight:700">　　以　上</div>`
+      : `<table class="stbl">${totalRows}</table>`
+    }
 
     ${g('notes')?`<div style="margin-top:20px"><div class="col-lbl">備考</div><div style="border:1px solid #bbb; padding:10px; font-size:11px; white-space:pre-wrap">${esc(g('notes'))}</div></div>`:''}
   `;
