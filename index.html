@@ -103,23 +103,69 @@
         .toast.show { opacity: 1; bottom: 40px; }
 
         /* A4 Preview Override (Visual Only) */
-        #a4 { background:#fff; width:100%; max-width:800px; margin:0 auto; padding:40px; border:1px solid #ddd; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        #a4 { background:#fff; width:210mm; min-height:297mm; margin:0 auto; padding:14mm 16mm; border:1px solid #ddd; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+
+        /* A4 2枚目ページ区切り */
+        .page-break { border-top: 2px dashed #aaa; margin: 20px 0; padding-top: 16px; position: relative; }
+        .page-break::before { content: "--- 2枚目 ---"; position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:#fff; padding:0 8px; font-size:10px; color:#aaa; }
         
         /* 既存のA4用スタイルを保持 */
-        .h-wrap{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:3px solid #111}
-        .h-title{font-size:24px;font-weight:700;letter-spacing:.4em}
-        .h-right{text-align:right;font-size:12px;line-height:1.8}
-        .h-no{font-size:14px;font-weight:700}
-        .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
-        .col-box{border:1px solid #bbb;padding:12px}
-        .col-lbl{font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #ddd;margin-bottom:8px}
-        .to-name{font-size:16px;font-weight:700;margin-bottom:8px}
-        .itbl{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px}
-        .itbl th{background:#f1f5f9;border:1px solid #bbb;padding:8px;font-size:12px}
-        .itbl td{border:1px solid #bbb;padding:8px;height:28px}
-        .stbl{width:100%;border-collapse:collapse;margin-left:auto;width:40%;font-size:13px}
-        .stbl td{padding:8px;border:1px solid #bbb}
+        .h-wrap{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:10px;border-bottom:3px solid #111}
+        .h-title{font-size:22px;font-weight:700;letter-spacing:.4em}
+        .h-right{text-align:right;font-size:11px;line-height:1.7}
+        .h-no{font-size:13px;font-weight:700}
+        .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+        .col-box{border:1px solid #bbb;padding:10px}
+        .col-lbl{font-size:10px;color:#888;font-weight:700;border-bottom:1px solid #ddd;margin-bottom:6px}
+        .to-name{font-size:15px;font-weight:700;margin-bottom:6px}
+        .itbl{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12px}
+        .itbl th{background:#f1f5f9;border:1px solid #bbb;padding:5px 7px;font-size:11px}
+        .itbl td{border:1px solid #bbb;padding:4px 7px;height:22px}
+        .stbl{border-collapse:collapse;margin-left:auto;width:44%;font-size:12px}
+        .stbl td{padding:6px 8px;border:1px solid #bbb}
         .grand{background:#f1f5f9;font-weight:700}
+
+        /* 印刷専用スタイル */
+        @media print {
+            /* 編集UI・操作ボタン等はすべて非表示 */
+            .nbar, .chips, .tabs, #pe, #toast,
+            .no-print { display: none !important; }
+
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .container { max-width: none; }
+
+            /* プレビューエリアのみ表示 */
+            #pp { display: block !important; }
+
+            #a4 {
+                width: 210mm;
+                min-height: auto;
+                max-width: none;
+                margin: 0;
+                padding: 14mm 16mm;
+                border: none !important;
+                box-shadow: none !important;
+                page-break-after: avoid;
+            }
+
+            /* 2枚モード時のページ区切り */
+            .page-break {
+                border: none !important;
+                page-break-before: always;
+                margin: 0;
+                padding: 0;
+            }
+            .page-break::before { display: none; }
+
+            @page {
+                size: A4;
+                margin: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -140,7 +186,7 @@
         <button class="btn" onclick="autoSeq()" style="padding:4px 12px; background:transparent; color:white; border-color:rgba(255,255,255,0.3)">連番+</button>
     </div>
 
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+    <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
         <div id="chips" class="chips"></div>
         <div style="display:flex; gap:8px">
             <button class="btn btn-primary" onclick="saveDoc()">💾 保存</button>
@@ -171,7 +217,7 @@
                 <div class="f-group"><label>住所</label><input id="ta"></div>
                 <div class="grid-main" style="gap:10px; margin-bottom:0">
                     <div class="f-group"><label>担当者名</label><input id="tc"></div>
-                    <div class="f-group"><label>納期</label><input id="noki" placeholder="2026/06/30"></div>
+                    <div class="f-group"><label>納期 / 納品日</label><input id="noki" type="date"></div>
                 </div>
                 <div class="grid-main" style="gap:10px; margin-bottom:0">
                     <div class="f-group"><label>有効期限</label><input id="exp" type="date"></div>
@@ -182,7 +228,12 @@
             </div>
 
             <div class="sec">
-                <div class="st">発行者情報（自社）</div>
+                <div class="st">発行者情報（自社）
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <span id="issuer-badge" style="display:none;font-size:10px;background:#d4edda;color:#276336;padding:2px 8px;border-radius:10px;font-weight:600">✓ 登録済み</span>
+                        <button class="btn" style="padding:3px 10px;font-size:11px" onclick="saveIssuer()">自社情報を登録</button>
+                    </div>
+                </div>
                 <div class="f-group">
                     <label>書類種別</label>
                     <select id="doctype" onchange="onDoctype()" style="font-size:16px; font-weight:700; color:var(--primary)">
@@ -255,10 +306,21 @@
     </div>
 
     <div id="pp" style="display:none">
+        <div class="no-print" style="display:flex; gap:10px; justify-content:center; align-items:center; margin-bottom:16px; flex-wrap:wrap">
+            <span style="font-size:12px; color:var(--text-sub); font-weight:700">ページ設定：</span>
+            <button class="btn" id="btn1p" onclick="setPageMode(1)" style="padding:6px 16px; font-size:12px; background:var(--primary); color:white; border:none">1枚（A4×1）</button>
+            <button class="btn" id="btn2p" onclick="setPageMode(2)" style="padding:6px 16px; font-size:12px;">2枚（A4×2）</button>
+            <span id="page-hint" style="font-size:11px; color:var(--text-sub)">現在：1枚モード</span>
+        </div>
         <div id="a4"></div>
-        <div style="display:flex; gap:12px; justify-content:center; margin-top:30px">
+        <div id="fit-warn" class="no-print" style="display:none; text-align:center; margin-top:12px">
+            <span style="background:#fff3cd; border:1px solid #f0c040; border-radius:6px; padding:6px 16px; font-size:12px; color:#856404">
+                ⚠️ 内容がA4をはみ出す可能性があります。自動縮小して印刷します。
+            </span>
+        </div>
+        <div class="no-print" style="display:flex; gap:12px; justify-content:center; margin-top:16px">
             <button class="btn" onclick="sw('edit')">編集に戻る</button>
-            <button class="btn btn-primary" onclick="window.print()">印刷 / PDF保存</button>
+            <button class="btn btn-primary" onclick="smartPrint()">🖨 印刷 / PDF保存</button>
         </div>
     </div>
 </div>
@@ -393,6 +455,15 @@ function applyD(d){
   conds=[];nc=1;(d.conds||[]).forEach(c=>addC(c.label,c.value));
   items=[];ni=1;(d.items||[]).forEach(it=>addI(it.name,it.qty,it.price));
   onTax();
+  // 発行元バッジ更新
+  const raw = localStorage.getItem(ISSUER_KEY);
+  if (raw) {
+    try {
+      const saved = JSON.parse(raw);
+      const match = ['fn','fa','ft','fc','inv'].every(k => (d[k]||'') === (saved[k]||''));
+      showIssuerBadge(match);
+    } catch(e) { showIssuerBadge(false); }
+  }
 }
 
 function saveDoc(){
@@ -411,7 +482,10 @@ function deleteDoc(no){
 function newDoc(){
   if(!confirm('現在の内容をクリアして新規作成しますか？'))return;
   items=[];conds=[];ni=1;nc=1;
-  ['fn','fa','ft','fc','inv','tn','ta','tc','sot','notes','noki'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  // 送り先・備考のみクリア（発行元はloadIssuerで復元）
+  ['tn','ta','tc','sot','notes','noki'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  // 発行元もいったんクリア（loadIssuerで復元される）
+  ['fn','fa','ft','fc','inv'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('pay').value='ご指定の方法';
   document.getElementById('tr').value='10';
   document.getElementById('tt').value='included';
@@ -423,7 +497,7 @@ function newDoc(){
   document.getElementById('exp').value=fd(exp);
   document.getElementById('nd').value=fd(today).replace(/-/g,'');
   addI('商品A',1,0);addI('商品B',1,0);addI('送料',1,0);
-  onTax();autoSeq();toast('新規作成しました');
+  onTax();autoSeq();loadIssuer();toast('新規作成しました');
 }
 
 function renderChips(){
@@ -437,6 +511,63 @@ function renderChips(){
     </div>`).join('');
 }
 
+let pageMode = 1; // 1 or 2
+
+// A4高さ（mm→px換算：1mm≒3.7795px、印刷96dpiベース）
+const A4_H_PX = 297 * 3.7795;
+
+function checkFit() {
+  if (pageMode === 2) {
+    document.getElementById('fit-warn').style.display = 'none';
+    return;
+  }
+  const a4 = document.getElementById('a4');
+  const warn = document.getElementById('fit-warn');
+  // scrollHeightで実際のコンテンツ高さを取得
+  const h = a4.scrollHeight;
+  warn.style.display = h > A4_H_PX ? 'block' : 'none';
+}
+
+function smartPrint() {
+  // 必ずプレビュー画面に切り替えてから印刷
+  sw('preview');
+
+  // レンダリング完了を待ってから印刷
+  requestAnimationFrame(() => {
+    const a4 = document.getElementById('a4');
+    let prevTransform = a4.style.transform;
+    let prevTransformOrigin = a4.style.transformOrigin;
+
+    if (pageMode !== 2) {
+      const contentH = a4.scrollHeight;
+      if (contentH > A4_H_PX * 1.01) {
+        const scale = Math.min(1, A4_H_PX / contentH);
+        a4.style.transformOrigin = 'top center';
+        a4.style.transform = `scale(${scale})`;
+      }
+    }
+
+    window.print();
+
+    setTimeout(() => {
+      a4.style.transform = prevTransform;
+      a4.style.transformOrigin = prevTransformOrigin;
+    }, 1000);
+  });
+}
+
+function setPageMode(n) {
+  pageMode = n;
+  document.getElementById('btn1p').style.background = n===1 ? 'var(--primary)' : '';
+  document.getElementById('btn1p').style.color = n===1 ? 'white' : '';
+  document.getElementById('btn1p').style.border = n===1 ? 'none' : '';
+  document.getElementById('btn2p').style.background = n===2 ? 'var(--primary)' : '';
+  document.getElementById('btn2p').style.color = n===2 ? 'white' : '';
+  document.getElementById('btn2p').style.border = n===2 ? 'none' : '';
+  document.getElementById('page-hint').textContent = `現在：${n}枚モード`;
+  buildPreview();
+}
+
 function buildPreview(){
   const {total,taxAmt,grand,type,rate}=calcT();
   const suffix=document.getElementById('ts').value;
@@ -447,12 +578,14 @@ function buildPreview(){
   const isDelivery=(doctype==='納品書');
 
   function drow(lbl,val){
-    return`<div style="display:flex; border-bottom:1px solid #eee; margin-bottom:4px; font-size:11px">
-            <span style="width:70px; color:#666">${lbl}</span>
+    if(!val)return'';
+    return`<div style="display:flex; border-bottom:1px solid #eee; margin-bottom:3px; font-size:11px">
+            <span style="width:60px; color:#666; flex-shrink:0">${lbl}</span>
             <span style="flex:1">${esc(val)}</span>
            </div>`;
   }
 
+  // 明細行（空行はモードに応じて）
   const filledRows=items.map((it,i)=>`
     <tr>
       <td style="text-align:center">${i+1}</td>
@@ -461,15 +594,18 @@ function buildPreview(){
       <td style="text-align:right">¥${fmt(it.price)}</td>
       <td style="text-align:right">¥${fmt(it.qty*it.price)}</td>
     </tr>`).join('');
-  
-  const emptyCount=Math.max(0,10-items.length);
+
+  // 1枚モード：空行は最小限（合計5行未満なら5行に揃える程度）
+  // 2枚モード：1枚目に収まる行数 + 2枚目に溢れる行
+  const minRows = pageMode === 2 ? 20 : Math.max(0, 5 - items.length);
+  const emptyCount = Math.max(0, minRows - items.length);
   const emptyRows=Array.from({length:emptyCount},(_,i)=>`
     <tr><td style="text-align:center">${items.length+i+1}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('');
 
   let totalRows='';
   if(type==='included'){
     totalRows+=`<tr class="grand"><td>合計金額（税込）</td><td style="text-align:right">¥${fmt(total)}</td></tr>`;
-    totalRows+=`<tr style="font-size:9px"><td>うち消費税（${rate}%）</td><td style="text-align:right">¥${fmt(taxAmt)}</td></tr>`;
+    totalRows+=`<tr style="font-size:10px"><td>うち消費税（${rate}%）</td><td style="text-align:right">¥${fmt(taxAmt)}</td></tr>`;
   }else if(type==='excluded'){
     totalRows+=`<tr><td>小計（税抜）</td><td style="text-align:right">¥${fmt(total)}</td></tr>`;
     totalRows+=`<tr><td>消費税（${rate}%）</td><td style="text-align:right">¥${fmt(taxAmt)}</td></tr>`;
@@ -480,7 +616,9 @@ function buildPreview(){
 
   const condRows=conds.filter(c=>c.label).map(c=>`<tr><td style="background:#f1f5f9; font-weight:700; width:30%">${esc(c.label)}</td><td>${esc(c.value)}</td></tr>`).join('');
 
-  document.getElementById('a4').innerHTML=`
+  // ヘッダー＋宛先部分（共通パーツ）
+  function buildHeader() {
+    return `
     <div class="h-wrap">
       <div class="h-title">${esc(document.getElementById('doctype').value).split('').join('　')}</div>
       <div class="h-right">
@@ -488,7 +626,6 @@ function buildPreview(){
         <div>発行日：${esc(g('edate'))||'　'}</div>
       </div>
     </div>
-
     <div class="cols">
       <div class="col-box">
         <div class="col-lbl">宛先</div>
@@ -501,34 +638,98 @@ function buildPreview(){
       </div>
       <div class="col-box">
         <div class="col-lbl">発行元</div>
-        <div class="from-name">${esc(g('fn'))||'　'}</div>
+        <div class="from-name" style="font-size:14px;font-weight:700;margin-bottom:6px">${esc(g('fn'))||'　'}</div>
         ${drow('住所', g('fa'))}
         ${drow('TEL', g('ft'))}
         ${drow('担当', g('fc'))}
         ${drow('登録番号', g('inv'))}
       </div>
-    </div>
+    </div>`;
+  }
 
-    ${condRows?`<table class="itbl" style="margin-bottom:10px">${condRows}</table>`:''}
+  // 2枚モード：1枚目＝ヘッダー+条件+明細上半分、2枚目＝明細下半分+合計+備考
+  // 1枚モード：すべて1枚
+  let html = '';
+  if (pageMode === 2) {
+    const splitAt = Math.ceil(items.length / 2);
+    const items1 = items.slice(0, splitAt);
+    const items2 = items.slice(splitAt);
 
-    <table class="itbl">
-      <thead><tr>
-        <th style="width:40px">No.</th>
-        <th>品名・備考</th>
-        <th style="width:60px">数量</th>
-        <th style="width:100px">単価</th>
-        <th style="width:120px">金額${pl}</th>
-      </tr></thead>
-      <tbody>${filledRows}${emptyRows}</tbody>
-    </table>
+    const rows1 = items1.map((it,i)=>`
+      <tr>
+        <td style="text-align:center">${i+1}</td>
+        <td>${esc(it.name)}</td>
+        <td style="text-align:right">${fmt(it.qty)}</td>
+        <td style="text-align:right">¥${fmt(it.price)}</td>
+        <td style="text-align:right">¥${fmt(it.qty*it.price)}</td>
+      </tr>`).join('');
 
-    ${isDelivery
-      ? `<div style="text-align:right; font-size:13px; margin:8px 0 4px; font-weight:700">　　以　上</div>`
-      : `<table class="stbl">${totalRows}</table>`
-    }
+    const rows2 = items2.map((it,i)=>`
+      <tr>
+        <td style="text-align:center">${splitAt+i+1}</td>
+        <td>${esc(it.name)}</td>
+        <td style="text-align:right">${fmt(it.qty)}</td>
+        <td style="text-align:right">¥${fmt(it.price)}</td>
+        <td style="text-align:right">¥${fmt(it.qty*it.price)}</td>
+      </tr>`).join('');
 
-    ${g('notes')?`<div style="margin-top:20px"><div class="col-lbl">備考</div><div style="border:1px solid #bbb; padding:10px; font-size:11px; white-space:pre-wrap">${esc(g('notes'))}</div></div>`:''}
-  `;
+    html = `
+      ${buildHeader()}
+      ${condRows?`<table class="itbl" style="margin-bottom:10px">${condRows}</table>`:''}
+      <table class="itbl">
+        <thead><tr>
+          <th style="width:36px">No.</th>
+          <th>品名・備考</th>
+          <th style="width:55px">数量</th>
+          <th style="width:90px">単価</th>
+          <th style="width:110px">金額${pl}</th>
+        </tr></thead>
+        <tbody>${rows1}</tbody>
+      </table>
+      <div style="text-align:right; font-size:10px; color:#aaa; margin-top:4px">（次ページへ続く）</div>
+
+      <div class="page-break">
+        ${buildHeader()}
+        <table class="itbl">
+          <thead><tr>
+            <th style="width:36px">No.</th>
+            <th>品名・備考</th>
+            <th style="width:55px">数量</th>
+            <th style="width:90px">単価</th>
+            <th style="width:110px">金額${pl}</th>
+          </tr></thead>
+          <tbody>${rows2||'<tr><td colspan="5" style="text-align:center; color:#aaa; font-size:11px">（続き）</td></tr>'}</tbody>
+        </table>
+        ${isDelivery
+          ? `<div style="text-align:right; font-size:13px; margin:8px 0 4px; font-weight:700">　　以　上</div>`
+          : `<table class="stbl">${totalRows}</table>`
+        }
+        ${g('notes')?`<div style="margin-top:16px"><div class="col-lbl">備考</div><div style="border:1px solid #bbb; padding:8px; font-size:11px; white-space:pre-wrap">${esc(g('notes'))}</div></div>`:''}
+      </div>`;
+  } else {
+    html = `
+      ${buildHeader()}
+      ${condRows?`<table class="itbl" style="margin-bottom:10px">${condRows}</table>`:''}
+      <table class="itbl">
+        <thead><tr>
+          <th style="width:36px">No.</th>
+          <th>品名・備考</th>
+          <th style="width:55px">数量</th>
+          <th style="width:90px">単価</th>
+          <th style="width:110px">金額${pl}</th>
+        </tr></thead>
+        <tbody>${filledRows}${emptyRows}</tbody>
+      </table>
+      ${isDelivery
+        ? `<div style="text-align:right; font-size:13px; margin:8px 0 4px; font-weight:700">　　以　上</div>`
+        : `<table class="stbl">${totalRows}</table>`
+      }
+      ${g('notes')?`<div style="margin-top:16px"><div class="col-lbl">備考</div><div style="border:1px solid #bbb; padding:8px; font-size:11px; white-space:pre-wrap">${esc(g('notes'))}</div></div>`:''}`;
+  }
+
+  document.getElementById('a4').innerHTML = html;
+  // レンダリング後にフィットチェック
+  requestAnimationFrame(checkFit);
 }
 
 function sw(tab){
@@ -539,7 +740,48 @@ function sw(tab){
   if(tab==='preview')buildPreview();
 }
 
-/* 初期化 */
+/* ===== 発行元（自社情報）永続化 ===== */
+const ISSUER_KEY = 'est_issuer';
+
+function saveIssuer() {
+  const d = { fn:g('fn'), fa:g('fa'), ft:g('ft'), fc:g('fc'), inv:g('inv') };
+  if (!d.fn) { toast('会社名・屋号を入力してください'); return; }
+  localStorage.setItem(ISSUER_KEY, JSON.stringify(d));
+  showIssuerBadge(true);
+  toast('自社情報を登録しました');
+}
+
+function loadIssuer() {
+  const raw = localStorage.getItem(ISSUER_KEY);
+  if (!raw) return;
+  try {
+    const d = JSON.parse(raw);
+    const sv = (id, v) => { const e = document.getElementById(id); if (e && !e.value) e.value = v || ''; };
+    sv('fn', d.fn); sv('fa', d.fa); sv('ft', d.ft); sv('fc', d.fc); sv('inv', d.inv);
+    showIssuerBadge(true);
+  } catch(e) {}
+}
+
+function showIssuerBadge(show) {
+  const b = document.getElementById('issuer-badge');
+  if (b) b.style.display = show ? 'inline' : 'none';
+}
+
+/* 発行元フィールドが編集されたら登録済みバッジを更新 */
+['fn','fa','ft','fc','inv'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', () => {
+    const raw = localStorage.getItem(ISSUER_KEY);
+    if (!raw) return;
+    try {
+      const d = JSON.parse(raw);
+      const changed = ['fn','fa','ft','fc','inv'].some(k => g(k) !== (d[k]||''));
+      showIssuerBadge(!changed);
+    } catch(e) {}
+  });
+});
+
+/* ===== 初期化 ===== */
 const today=new Date(),fd=d=>d.toISOString().split('T')[0];
 const exp=new Date(today);exp.setDate(exp.getDate()+30);
 document.getElementById('edate').value=fd(today);
@@ -548,6 +790,7 @@ document.getElementById('nd').value=fd(today).replace(/-/g,'');
 autoSeq();
 addI('商品A',1,0);addI('商品B',1,0);addI('送料',1,0);
 onTax();renderChips();
+loadIssuer();
 </script>
 </body>
 </html>
