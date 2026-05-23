@@ -105,10 +105,48 @@
         .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 30px; font-size: 14px; opacity: 0; transition: 0.3s; z-index: 10000; }
         .toast.show { opacity: 1; bottom: 40px; }
 
-        /* A4 Preview Override (Visual Only) */
-        #a4 { background:#fff; width:100%; max-width:800px; margin:0 auto; padding:40px; border:1px solid #ddd; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        
-        /* 既存のA4用スタイルを保持 */
+        /* A4 Preview（画面表示用） */
+        #a4 {
+            background:#fff; width:100%; max-width:760px; margin:0 auto;
+            padding:32px 40px; border:1px solid #ddd;
+            box-shadow:0 10px 25px rgba(0,0,0,0.1);
+            box-sizing:border-box; font-size:11pt; line-height:1.5;
+        }
+        #a4-p2 {
+            background:#fff; width:100%; max-width:760px; margin:20px auto 0;
+            padding:32px 40px; border:1px solid #ddd;
+            box-shadow:0 10px 25px rgba(0,0,0,0.1);
+            box-sizing:border-box; font-size:11pt; line-height:1.5;
+            display:none;
+        }
+
+        /* 印刷専用スタイル */
+        @media print {
+            @page { margin:0; size:A4; }
+            * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+            body { margin:0; padding:0; background:white; }
+            /* 印刷不要な要素を個別に非表示 */
+            .nbar, .tabs, .no-print, #pe, #doc-modal-overlay,
+            #pp > div:last-child { display:none !important; }
+            /* ppとa4は表示 */
+            #pp { display:block !important; background:white; padding:0; margin:0; }
+            #a4 {
+                width:210mm !important; max-width:none !important;
+                padding:15mm 18mm !important;
+                border:none !important; box-shadow:none !important;
+                margin:0 !important;
+                page-break-after:always;
+            }
+            #a4-p2 {
+                width:210mm !important; max-width:none !important;
+                padding:15mm 18mm !important;
+                border:none !important; box-shadow:none !important;
+                margin:0 !important;
+                page-break-before:always;
+            }
+        }
+
+        /* A4内の共通スタイル（画面・印刷共通） */
         .h-wrap{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:3px solid #111}
         .h-title{font-size:24px;font-weight:700;letter-spacing:.4em}
         .h-right{text-align:right;font-size:12px;line-height:1.8}
@@ -219,7 +257,7 @@
         <button class="btn" onclick="autoSeq()" style="padding:4px 12px; background:transparent; color:white; border-color:rgba(255,255,255,0.3)">連番+</button>
     </div>
 
-    <div style="display:flex; justify-content:flex-end; align-items:center; margin-bottom:16px">
+    <div class="no-print" style="display:flex; justify-content:flex-end; align-items:center; margin-bottom:16px">
         <div style="display:flex; gap:8px">
             <button class="btn" onclick="openDocModal()">📄 書類一覧</button>
             <button class="btn btn-primary" onclick="saveDoc()">💾 保存</button>
@@ -254,7 +292,7 @@
                     <div class="f-group"><label>納期</label><input id="noki" placeholder="例：在庫確認後ご連絡／約1週間"></div>
                 </div>
                 <div class="grid-main" style="gap:10px; margin-bottom:0">
-                    <div class="f-group"><label>有効期限</label><input id="exp" type="date"></div>
+                    <div class="f-group"><label>有効期限</label><input id="exp" placeholder="例：発行日より30日間"></div>
                     <div class="f-group"><label>支払い方法</label><input id="pay" value="ご指定の方法"></div>
                 </div>
                 <!-- ご購入方法は削除（支払い方法で代用） -->
@@ -337,6 +375,7 @@
 
     <div id="pp" style="display:none">
         <div id="a4"></div>
+        <div id="a4-p2"></div>
         <div style="display:flex; gap:12px; justify-content:center; margin-top:30px">
             <button class="btn" onclick="sw('edit')">編集に戻る</button>
             <button class="btn btn-primary" onclick="printWithName()">印刷 / PDF保存</button>
@@ -609,12 +648,13 @@ function buildPreview(){
   const isDelivery=(doctype==='納品書');
 
   function drow(lbl,val){
-    return`<div style="display:flex; border-bottom:1px solid #eee; margin-bottom:4px; font-size:11px">
-            <span style="width:70px; color:#666">${lbl}</span>
+    return val?`<div style="display:flex;border-bottom:1px solid #eee;margin-bottom:3px;font-size:10pt">
+            <span style="width:70px;color:#666;flex-shrink:0">${lbl}</span>
             <span style="flex:1">${esc(val)}</span>
-           </div>`;
+           </div>`:'';
   }
 
+  // 明細行（空行なし）
   const filledRows=items.map((it,i)=>`
     <tr>
       <td style="text-align:center">${i+1}</td>
@@ -623,15 +663,11 @@ function buildPreview(){
       <td style="text-align:right">¥${fmt(it.price)}</td>
       <td style="text-align:right">¥${fmt(it.qty*it.price)}</td>
     </tr>`).join('');
-  
-  const emptyCount=Math.max(0,10-items.length);
-  const emptyRows=Array.from({length:emptyCount},(_,i)=>`
-    <tr><td style="text-align:center">${items.length+i+1}</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`).join('');
 
   let totalRows='';
   if(type==='included'){
     totalRows+=`<tr class="grand"><td>合計金額（税込）</td><td style="text-align:right">¥${fmt(total)}</td></tr>`;
-    totalRows+=`<tr style="font-size:9px"><td>うち消費税（${rate}%）</td><td style="text-align:right">¥${fmt(taxAmt)}</td></tr>`;
+    totalRows+=`<tr style="font-size:9pt"><td>うち消費税（${rate}%）</td><td style="text-align:right">¥${fmt(taxAmt)}</td></tr>`;
   }else if(type==='excluded'){
     totalRows+=`<tr><td>小計（税抜）</td><td style="text-align:right">¥${fmt(total)}</td></tr>`;
     totalRows+=`<tr><td>消費税（${rate}%）</td><td style="text-align:right">¥${fmt(taxAmt)}</td></tr>`;
@@ -640,17 +676,18 @@ function buildPreview(){
     totalRows+=`<tr class="grand"><td>合計金額（非課税）</td><td style="text-align:right">¥${fmt(total)}</td></tr>`;
   }
 
-  const condRows=conds.filter(c=>c.label).map(c=>`<tr><td style="background:#f1f5f9; font-weight:700; width:30%">${esc(c.label)}</td><td>${esc(c.value)}</td></tr>`).join('');
+  const condRows=conds.filter(c=>c.label).map(c=>`
+    <tr><td style="background:#f1f5f9;font-weight:700;width:30%">${esc(c.label)}</td><td>${esc(c.value)}</td></tr>`).join('');
 
-  document.getElementById('a4').innerHTML=`
+  // ヘッダー・宛先・明細 を組み立て
+  const headerHtml=`
     <div class="h-wrap">
-      <div class="h-title">${esc(document.getElementById('doctype').value).split('').join('　')}</div>
+      <div class="h-title">${esc(doctype).split('').join('　')}</div>
       <div class="h-right">
         <div class="h-no">${esc(docno())||'—'}</div>
         <div>発行日：${esc(g('edate'))||'　'}</div>
       </div>
     </div>
-
     <div class="cols">
       <div class="col-box">
         <div class="col-lbl">宛先</div>
@@ -670,27 +707,76 @@ function buildPreview(){
         ${drow('登録番号', g('inv'))}
       </div>
     </div>
+    ${condRows?`<table class="itbl" style="margin-bottom:10px">${condRows}</table>`:''}`;
 
-    ${condRows?`<table class="itbl" style="margin-bottom:10px">${condRows}</table>`:''}
-
+  const tableHtml=`
     <table class="itbl">
       <thead><tr>
-        <th style="width:40px">No.</th>
+        <th style="width:36px">No.</th>
         <th>品名・備考</th>
-        <th style="width:60px">数量</th>
-        <th style="width:100px">単価</th>
-        <th style="width:120px">金額${pl}</th>
+        <th style="width:52px">数量</th>
+        <th style="width:90px">単価</th>
+        <th style="width:110px">金額${pl}</th>
       </tr></thead>
-      <tbody>${filledRows}${emptyRows}</tbody>
-    </table>
+      <tbody>${filledRows}</tbody>
+    </table>`;
 
-    ${isDelivery
-      ? `<div style="text-align:right; font-size:13px; margin:8px 0 4px; font-weight:700">　　以　上</div>`
-      : `<table class="stbl">${totalRows}</table>`
-    }
+  const footerHtml=isDelivery
+    ?`<div style="text-align:right;font-size:11pt;margin:8px 0 4px;font-weight:700">　　以　上</div>`
+    :`<table class="stbl">${totalRows}</table>`;
 
-    ${g('notes')?`<div style="margin-top:20px"><div class="col-lbl">備考</div><div style="border:1px solid #bbb; padding:10px; font-size:11px; white-space:pre-wrap">${esc(g('notes'))}</div></div>`:''}
-  `;
+  const notesHtml=g('notes')
+    ?`<div style="margin-top:16px"><div class="col-lbl">備考</div><div style="border:1px solid #bbb;padding:10px;font-size:10pt;white-space:pre-wrap">${esc(g('notes'))}</div></div>`
+    :'';
+
+  // まず1ページで試す
+  const a4=document.getElementById('a4');
+  const p2=document.getElementById('a4-p2');
+  a4.innerHTML=headerHtml+tableHtml+footerHtml+notesHtml;
+  p2.style.display='none';
+
+  // 1ページの高さ上限：760px幅での実測ベース（A4縦≒1075px相当）
+  const A4_H = 1000; // 安全側で抑える
+
+  if(a4.scrollHeight>A4_H && items.length>1){
+    // 2ページに分割：明細を前半・後半に分ける
+    const half=Math.ceil(items.length/2);
+    const rows1=items.slice(0,half).map((it,i)=>`
+      <tr>
+        <td style="text-align:center">${i+1}</td>
+        <td>${esc(it.name)}</td>
+        <td style="text-align:right">${fmt(it.qty)}</td>
+        <td style="text-align:right">¥${fmt(it.price)}</td>
+        <td style="text-align:right">¥${fmt(it.qty*it.price)}</td>
+      </tr>`).join('');
+    const rows2=items.slice(half).map((it,i)=>`
+      <tr>
+        <td style="text-align:center">${half+i+1}</td>
+        <td>${esc(it.name)}</td>
+        <td style="text-align:right">${fmt(it.qty)}</td>
+        <td style="text-align:right">¥${fmt(it.price)}</td>
+        <td style="text-align:right">¥${fmt(it.qty*it.price)}</td>
+      </tr>`).join('');
+
+    const tbl1=`<table class="itbl"><thead><tr>
+        <th style="width:36px">No.</th><th>品名・備考</th>
+        <th style="width:52px">数量</th><th style="width:90px">単価</th>
+        <th style="width:110px">金額${pl}</th>
+      </tr></thead><tbody>${rows1}</tbody></table>`;
+    const tbl2=`<table class="itbl"><thead><tr>
+        <th style="width:36px">No.</th><th>品名・備考</th>
+        <th style="width:52px">数量</th><th style="width:90px">単価</th>
+        <th style="width:110px">金額${pl}</th>
+      </tr></thead><tbody>${rows2}</tbody></table>`;
+
+    a4.innerHTML=headerHtml+tbl1+`<div style="text-align:right;font-size:10pt;color:#888;margin-top:8px">次ページへ続く</div>`;
+    p2.innerHTML=`
+      <div style="font-size:10pt;color:#888;margin-bottom:12px;border-bottom:1px solid #ddd;padding-bottom:6px">
+        ${esc(docno()||'')}　${esc(toFull)}　（続き）
+      </div>
+      ${tbl2}${footerHtml}${notesHtml}`;
+    p2.style.display='block';
+  }
 }
 
 function sw(tab){
@@ -711,9 +797,7 @@ function newDoc(){
   document.getElementById('ts').value='御中';
   ['sr','sy','so'].forEach(id=>document.getElementById(id).checked=false);
   const today=new Date(),fd=d=>d.toISOString().split('T')[0];
-  const exp=new Date(today);exp.setDate(exp.getDate()+30);
   document.getElementById('edate').value=fd(today);
-  document.getElementById('exp').value=fd(exp);
   syncDateToNo();
   addI('商品A',1,0);addI('商品B',1,0);addI('送料',1,0);
   onTax();autoSeq();toast('新規作成しました');
@@ -735,6 +819,10 @@ function loadIssuer(){
 
 // PDF印刷時ファイル名：管理番号_会社名様
 function printWithName(){
+  // プレビューが表示されていない場合は先にビルド
+  if(document.getElementById('pp').style.display==='none'){
+    sw('preview');
+  }
   const no=docno()||'mitsumori';
   const name=(g('tn')||'').trim();
   const suffix=document.getElementById('ts').value||'';
@@ -748,9 +836,7 @@ function printWithName(){
 
 /* 初期化 */
 const today=new Date(),fd=d=>d.toISOString().split('T')[0];
-const exp=new Date(today);exp.setDate(exp.getDate()+30);
 document.getElementById('edate').value=fd(today);
-document.getElementById('exp').value=fd(exp);
 syncDateToNo();
 loadIssuer();
 autoSeq();
