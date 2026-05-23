@@ -32,14 +32,16 @@ HTML / CSS / JavaScript のみで構築された、完全ローカル動作の�
 
 ---
 
-## 🔢 管理番号の自動採番
+## 🔢 管理番号の自動採番・重複防止
 
 以下の形式で連番生成。
 
 - `EST-20260512-001`
 - `INV-20260512-001`
 
-既存番号を自動判定して次番号を生成。
+管理番号の日付部分は **発行日と自動連動**。発行日を変更すると即座に反映されます。  
+既存番号をスキップして **未使用の最小番号** を自動採番。  
+保存時に重複が検出された場合は、該当書類をハイライト表示して上書き確認を行います。
 
 ---
 
@@ -61,11 +63,9 @@ HTML / CSS / JavaScript のみで構築された、完全ローカル動作の�
 
 ## 🗓 カレンダー入力対応
 
-- 発行日
+- 発行日（管理番号の日付と連動）
 - 有効期限
-- 納期 / 納品日
-
-すべてカレンダーピッカーからクリックで選択可能。
+- 納期 / 納品日（自由入力）
 
 ---
 
@@ -74,31 +74,30 @@ HTML / CSS / JavaScript のみで構築された、完全ローカル動作の�
 ブラウザの印刷機能を利用してそのまま PDF 保存可能。
 
 - A4 レイアウト最適化
-- 1枚 / 2枚モードの切り替え対応
-- はみ出し検知・自動縮小印刷
+- 印刷向けデザイン
 - 編集 UI は印刷に映り込まない設計
 
-### ページモード切り替え
-
-プレビュー画面で **「1枚（A4×1）」「2枚（A4×2）」** を選択可能。  
-明細が多い場合は 2枚モードを使用すると、前半・後半に自動分割されます。
+**PDFファイル名の自動設定：**  
+「印刷 / PDF保存」ボタンを押すと、ファイル名が `管理番号_会社名様` の形式で自動セットされます。
 
 ---
 
-## 💾 書類保存機能
+## 💾 書類の保存・管理
 
-localStorage に保存。
+localStorage に保存。「📄 書類一覧」ボタンでモーダルを開いて管理できます。
 
-- 複数書類管理
-- 保存済み一覧表示
-- ワンクリック呼び出し
-- 再編集対応
+- 複数書類の保存・管理
+- 直近3件 / それ以前 に分けて一覧表示
+- 書類種別アイコン（📋💴🧾📦）付き
+- ワンクリックで呼び出し・再編集
+- 削除はモーダル内インライン確認で操作
 
 ---
 
 ## 🏢 発行者情報の登録・自動入力
 
-会社情報を一度登録すると、次回以降は自動で入力済みになります。
+会社情報を一度登録すると、次回以降は自動で入力済みになります。  
+発行日は都度変わるため、発行者情報には含まれません。
 
 登録できる項目：
 
@@ -107,9 +106,6 @@ localStorage に保存。
 - 電話番号
 - 担当者名
 - インボイス登録番号
-
-「自社情報を登録」ボタンで保存。登録済みの場合は ✓ バッジを表示。  
-新規作成時も登録済み情報を自動復元。
 
 ---
 
@@ -127,9 +123,9 @@ localStorage に保存。
 
 1. `mitsumori.html` をダウンロード
 2. ブラウザで開く
-3. 必要事項を入力
-4. 「A4プレビュー表示」で確認
-5. ページ設定（1枚 / 2枚）を選択
+3. 発行者情報を入力して「発行者情報を保存する」
+4. 書類種別・発行日・宛先などを入力
+5. 「A4プレビュー表示」で確認
 6. 「印刷 / PDF保存」で出力
 
 ---
@@ -182,6 +178,8 @@ Copyright (c) 2026
 
 ---
 
+---
+
 # Mitsumori — Estimate, Invoice, Receipt & Delivery Note Generator
 
 No installation required. Just open it in your browser.  
@@ -216,14 +214,16 @@ Fully offline.
 
 ---
 
-## 🔢 Auto-Numbered Document IDs
+## 🔢 Auto-Numbered Document IDs with Duplicate Prevention
 
 Generates sequential IDs in formats like:
 
 - `EST-20260512-001`
 - `INV-20260512-001`
 
-Automatically detects existing numbers and increments to the next.
+The date portion of the document ID **automatically syncs with the issue date** — change the date and the ID updates instantly.  
+Skips already-used numbers and assigns the **lowest available sequence number**.  
+If a duplicate is detected on save, the conflicting document is highlighted in the list with an inline overwrite confirmation.
 
 ---
 
@@ -245,11 +245,9 @@ Consumption tax is calculated automatically.
 
 ## 🗓 Date Picker Support
 
-- Issue date
+- Issue date (synced to document ID)
 - Expiry date
-- Delivery date
-
-All fields support click-to-select via the browser's native calendar picker.
+- Delivery date (free text)
 
 ---
 
@@ -258,31 +256,30 @@ All fields support click-to-select via the browser's native calendar picker.
 Uses the browser's built-in print function for PDF output.
 
 - A4-optimized layout
-- 1-page / 2-page mode toggle
-- Overflow detection with auto-scaling
+- Print-ready design
 - UI controls are excluded from print output
 
-### Page Mode
-
-In the preview screen, select **"1 page (A4×1)"** or **"2 pages (A4×2)"**.  
-In 2-page mode, line items are automatically split across two pages.
+**Auto PDF filename:**  
+Clicking "Print / Save as PDF" automatically sets the filename to `DocumentID_CompanyName様`.
 
 ---
 
-## 💾 Document Storage
+## 💾 Document Storage & Management
 
-Saved to `localStorage`.
+Saved to `localStorage`. Open the **"📄 書類一覧" modal** to manage all saved documents.
 
-- Manage multiple documents
-- View saved document list
-- One-click reload
-- Re-edit anytime
+- Save and manage multiple documents
+- List split into "Recent (3)" and "Older"
+- Document type icons (📋💴🧾📦)
+- One-click load and re-edit
+- Inline delete confirmation inside the modal
 
 ---
 
 ## 🏢 Issuer Info — Register Once, Auto-Fill Forever
 
-Save your company information once and it will be automatically filled in on every new document.
+Save your company information once and it will be automatically filled in on every new document.  
+The issue date is intentionally excluded from saved issuer info as it changes each time.
 
 Fields available:
 
@@ -291,8 +288,6 @@ Fields available:
 - Phone number
 - Contact name
 - Invoice registration number
-
-A ✓ badge is shown when saved info is in use. Auto-restored on new document creation.
 
 ---
 
@@ -310,9 +305,9 @@ A ✓ badge is shown when saved info is in use. Auto-restored on new document cr
 
 1. Download `mitsumori.html`
 2. Open it in your browser
-3. Fill in the required fields
-4. Click "A4 Preview" to review
-5. Choose 1-page or 2-page mode
+3. Enter your company info and click "発行者情報を保存する"
+4. Fill in document type, issue date, recipient, and line items
+5. Click "A4 Preview" to review
 6. Click "Print / Save as PDF" to export
 
 ---
