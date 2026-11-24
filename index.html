@@ -469,18 +469,19 @@ body{
           <span style="font-size:13px;white-space:nowrap;color:var(--text-sub)">日前後</span>
         </div>
       </div>
-      <!-- お支払い方法 -->
+      <!-- お支払い方法（選択＋自由入力） -->
       <div class="field" id="field-payment">
         <label>お支払い方法</label>
-        <select id="payment">
-          <option value="銀行振込">銀行振込</option>
-          <option value="クレジットカード">クレジットカード</option>
-          <option value="コンビニ決済">コンビニ決済</option>
-          <option value="代金引換">代金引換</option>
-          <option value="請求書払い">請求書払い</option>
-          <option value="現金">現金</option>
-          <option value="その他">その他</option>
-        </select>
+        <input id="payment" list="payment-options" value="銀行振込" placeholder="選択または自由入力">
+        <datalist id="payment-options">
+          <option value="銀行振込">
+          <option value="クレジットカード">
+          <option value="コンビニ決済">
+          <option value="代金引換">
+          <option value="請求書払い">
+          <option value="現金">
+          <option value="その他">
+        </datalist>
       </div>
     </div>
   </div>
@@ -488,7 +489,14 @@ body{
   <!-- 発行者・宛先 -->
   <div class="grid2" style="gap:12px;margin-bottom:1rem">
     <div class="section" style="margin-bottom:0">
-      <div class="section-title">発行者情報</div>
+      <div class="section-header" style="margin-bottom:0.75rem">
+        <div class="section-title">発行者情報</div>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:11px" onclick="exportIssuerProfile()" title="発行者・口座・インボイス番号をPCに保存">💾 保存</button>
+          <button type="button" class="btn btn-sm" style="padding:3px 8px;font-size:11px" onclick="document.getElementById('import-issuer-input').click()" title="保存した発行者ファイルを読み込む">📂 読込</button>
+          <input type="file" id="import-issuer-input" accept=".json" style="display:none" onchange="importIssuerProfile(event)">
+        </div>
+      </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <div class="field"><label>会社名・氏名</label><input id="from-name"></div>
         <div class="field"><label>住所</label><input id="from-addr"></div>
@@ -911,6 +919,71 @@ function loadBankInfo(){
 function saveInvoiceNo(){ localStorage.setItem(SK_INVOICE, g('invoice-no')); }
 function loadInvoiceNo(){ const v=localStorage.getItem(SK_INVOICE); if(v) s('invoice-no',v); }
 document.getElementById('invoice-no').addEventListener('input', saveInvoiceNo);
+
+// ===== ISSUER PROFILE BACKUP / RESTORE =====
+function exportIssuerProfile(){
+  const profile = {
+    type: 'issuer_profile',
+    invoiceNo: g('invoice-no'),
+    from: {
+      name: g('from-name'),
+      addr: g('from-addr'),
+      tel: g('from-tel'),
+      email: g('from-email')
+    },
+    bank: {
+      name: g('bank-name'),
+      branch: g('bank-branch'),
+      type: g('bank-type'),
+      number: g('bank-number'),
+      holder: g('bank-holder')
+    }
+  };
+  const blob = new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `発行者情報_${safeFileName(g('from-name') || 'backup')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('💾 発行者情報をPCに保存しました');
+}
+
+function importIssuerProfile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const d = JSON.parse(reader.result);
+      if(d.type !== 'issuer_profile'){
+        showToast('⚠️ 発行者情報ファイルではありません');
+        return;
+      }
+      if(d.invoiceNo !== undefined){ s('invoice-no', d.invoiceNo); saveInvoiceNo(); }
+      if(d.from){
+        s('from-name', d.from.name || '');
+        s('from-addr', d.from.addr || '');
+        s('from-tel', d.from.tel || '');
+        s('from-email', d.from.email || '');
+        saveFromInfo();
+      }
+      if(d.bank){
+        s('bank-name', d.bank.name || '');
+        s('bank-branch', d.bank.branch || '');
+        if(d.bank.type) s('bank-type', d.bank.type);
+        s('bank-number', d.bank.number || '');
+        s('bank-holder', d.bank.holder || '');
+        saveBankInfo();
+      }
+      showToast('📂 発行者情報を読み込みました');
+    }catch(err){
+      showToast('⚠️ 読み込みに失敗しました');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
 
 // ===== AUTO NUMBER =====
 function getYear(){ return new Date().getFullYear(); }
@@ -1364,4 +1437,3 @@ renderListPanel();
 </script>
 </body>
 </html>
-
