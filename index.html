@@ -491,18 +491,22 @@ body{
         <label>インボイス番号</label>
         <input id="invoice-no" value="T000000000000">
       </div>
-      <!-- 見積書：納期 -->
+      <!-- 見積書：納期（自由入力＋選択候補付き） -->
       <div class="field" id="field-delivery">
         <label>納期</label>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:13px;white-space:nowrap;color:var(--text-sub)">ご注文より</span>
-          <select id="delivery-days" style="font-size:13px;padding:7px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer;flex:1">
-            <option value="3">3</option><option value="5">5</option><option value="7">7</option>
-            <option value="10" selected>10</option><option value="14">14</option>
-            <option value="20">20</option><option value="30">30</option>
-          </select>
-          <span style="font-size:13px;white-space:nowrap;color:var(--text-sub)">日前後</span>
-        </div>
+        <input id="delivery-text" list="delivery-options" value="ご注文より10日前後" placeholder="選択または自由入力">
+        <datalist id="delivery-options">
+          <option value="ご注文より3日前後">
+          <option value="ご注文より5日前後">
+          <option value="ご注文より7日前後">
+          <option value="ご注文より10日前後">
+          <option value="ご注文より14日前後">
+          <option value="ご注文より20日前後">
+          <option value="ご注文より30日前後">
+          <option value="ご入金確認後 2〜3営業日以内">
+          <option value="即日出荷">
+          <option value="別途協議">
+        </datalist>
       </div>
       <!-- お支払い方法（選択＋自由入力） -->
       <div class="field" id="field-payment">
@@ -697,7 +701,7 @@ let items   = [];
 let nextId  = 1;
 let taxMode = 'excl';
 let docType = 'estimate'; // 'estimate' | 'invoice' | 'delivery' | 'receipt'
-let currentDocId   = null; // 編集中の保存済み書類ID（nullなら新規）
+let currentDocId   = null;
 let currentDocName = '';
 let toastTimer = null;
 
@@ -794,6 +798,7 @@ function newDocument(){
   s('doc-date', fd(today));
   s('doc-date2', fd(future));
   assignNextDocNo(docType);
+  s('delivery-text', 'ご注文より10日前後');
   ['to-name','to-addr','to-contact','to-email','shop-other-text'].forEach(id=>s(id,''));
   document.getElementById('shop-rakuten').checked = false;
   document.getElementById('shop-yahoo').checked   = false;
@@ -832,7 +837,6 @@ function openDocFromFile(e){
       if(!confirm(`「${data.name || file.name}」を呼び出します。\n現在の入力内容は上書きされます。よろしいですか？`)) return;
       applySnapshot(data);
 
-      // リスト内に同じIDの書類があれば紐付け、なければ新規IDを割り当てて紐付け
       const list = getSavedList();
       const existing = data.id ? list.find(item => item.id === data.id) : null;
       if(existing){
@@ -893,7 +897,6 @@ function switchDocType(type){
   document.getElementById('section-shops').style.display  = type === 'estimate' ? ''     : 'none';
   document.getElementById('section-bank').style.display   = type === 'invoice'  ? ''     : 'none';
 
-  // 備考が未入力または他モードの初期値と一致する場合は自動切替
   const notesEl = document.getElementById('notes');
   const allDefaults = Object.values(DOC_CONFIG).map(c => c.defaultNotes);
   if(!notesEl.value || allDefaults.includes(notesEl.value)){
@@ -988,7 +991,7 @@ function updateTotals(pulse=false){
 }
 
 // ===== HELPERS =====
-function getDelivery(){ return `ご注文より${g('delivery-days')}日前後`; }
+function getDelivery(){ return g('delivery-text') || 'ご注文より10日前後'; }
 function getShops(){
   const s=[];
   if(document.getElementById('shop-rakuten').checked) s.push('楽天ショップ');
@@ -1154,7 +1157,7 @@ function collectSnapshot(name, existingId = null){
       'doc-date2': g('doc-date2'),
       'receipt-proviso': g('receipt-proviso'),
       'invoice-no': g('invoice-no'),
-      'delivery-days': g('delivery-days'),
+      'delivery-text': g('delivery-text'),
       'payment': g('payment'),
       'from-name': g('from-name'),
       'from-addr': g('from-addr'),
@@ -1184,7 +1187,7 @@ function applySnapshot(snap){
   document.getElementById('doc-type').value = t;
 
   const f = snap.fields||{};
-  ['doc-no','doc-date','doc-date2','receipt-proviso','invoice-no','delivery-days','payment',
+  ['doc-no','doc-date','doc-date2','receipt-proviso','invoice-no','delivery-text','payment',
    'from-name','from-addr','from-tel','from-email',
    'to-name','to-addr','to-contact','to-email',
    'bank-name','bank-branch','bank-type','bank-number','bank-holder',
@@ -1214,7 +1217,6 @@ function renderListPanel(){
     badge.style.display = 'none';
   }
 
-  // 更新日時（savedAt）の新しい順に並べる
   const sorted = [...list].sort((a,b) => new Date(b.savedAt) - new Date(a.savedAt));
   const filtered = sorted.filter(snap=>{
     if(!query) return true;
@@ -1324,7 +1326,6 @@ function onSaveModeChange(){
   if(mode === 'overwrite'){
     nameInput.value = currentDocName || buildDefaultSaveName();
   } else {
-    // 新規保存に切り替えたら次の番号候補を含むデフォルト名を提案
     const nextNo = peekNextDocNo(docType);
     const cfg    = DOC_CONFIG[docType] || DOC_CONFIG.estimate;
     const toName = g('to-name').replace(/\s*(御中|様|殿|先生)\s*$/, '').trim();
@@ -1347,7 +1348,6 @@ function confirmSave(){
   let snap;
 
   if(isOverwrite){
-    // 上書き保存：既存IDを維持し、番号カウンターは進めない
     snap = collectSnapshot(name, currentDocId);
     const idx = list.findIndex(item => item.id === currentDocId);
     if(idx !== -1){
@@ -1358,13 +1358,11 @@ function confirmSave(){
     setSavedList(list);
     setCurrentDoc(snap.id, name);
   } else {
-    // 新規保存：もし現在の書類番号が新規採番候補と一致していればカウンターを進める
     const currentNo = g('doc-no');
     const expectedNo = peekNextDocNo(docType);
     if(currentNo === expectedNo){
       consumeDocNo(docType);
     } else if(currentDocId !== null){
-      // 既存書類からの「新規保存（複製）」で番号が古いままなら自動で新しい番号を振る
       const newNo = peekNextDocNo(docType);
       s('doc-no', newNo);
       consumeDocNo(docType);
@@ -1373,7 +1371,6 @@ function confirmSave(){
     snap = collectSnapshot(name);
     list.push(snap);
     setSavedList(list);
-    // 保存後もそのまま上書き編集できるよう編集中IDとして保持
     setCurrentDoc(snap.id, name);
   }
 
@@ -1431,7 +1428,7 @@ function buildPreview(){
     infoHTML = `<div class="p-info-row">
       ${pinfo('お支払い方法', esc(g('payment')))}
       ${pinfo('ご購入方法',   esc(getShops()))}
-      ${pinfo('納期',         getDelivery())}
+      ${pinfo('納期',         esc(getDelivery()))}
     </div>`;
   } else if(docType === 'invoice'){
     const itemsHtml = [
@@ -1606,7 +1603,6 @@ function printPDF(){
 <body><div id="sheet">${content}</div>
 <script>
 window.onload = function(){
-  // A4縦（余白10mm上下除き高さ約277mm ≒ 1045px）に1枚で収まるよう自動調整
   var sheet = document.getElementById('sheet');
   var maxA4HeightPx = 1020;
   var actualHeight = sheet.scrollHeight;
