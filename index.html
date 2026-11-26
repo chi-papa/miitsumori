@@ -57,6 +57,21 @@ body{
 .app-logo:hover{transform:rotate(-4deg) scale(1.05)}
 .app-title{font-size:16px;font-weight:600;letter-spacing:0.02em}
 
+/* 編集中バッジ */
+.editing-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:12px;padding:4px 10px;border-radius:20px;
+  background:var(--accent-light);color:var(--accent);
+  border:1px solid var(--border);font-weight:600;
+  max-width:260px;
+}
+.editing-badge-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.editing-badge-clear{
+  background:none;border:none;cursor:pointer;color:var(--text-sub);
+  font-size:12px;padding:0 2px;line-height:1;border-radius:50%;
+}
+.editing-badge-clear:hover{color:var(--danger)}
+
 /* 書類種別セレクト */
 .doc-type-wrap{
   display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;
@@ -231,6 +246,9 @@ body{
   cursor:pointer;transition:all .2s var(--ease);background:var(--surface);
   display:flex;flex-direction:column;gap:4px;
 }
+.saved-card.active-doc{
+  border-color:var(--accent);background:var(--accent-light);
+}
 .saved-card:hover{border-color:var(--accent);background:var(--accent-light);transform:translateX(-2px)}
 .saved-card:active{transform:translateX(0) scale(0.99)}
 .saved-card-top{display:flex;align-items:center;justify-content:space-between;gap:4px}
@@ -269,11 +287,20 @@ body{
 .modal-backdrop.show{opacity:1;pointer-events:all}
 .modal{
   background:var(--surface);border:1px solid var(--border);border-radius:12px;
-  padding:1.5rem;width:360px;box-shadow:0 12px 36px rgba(0,0,0,.14);
+  padding:1.5rem;width:390px;box-shadow:0 12px 36px rgba(0,0,0,.14);
   transform:scale(.94) translateY(10px);transition:transform .25s var(--ease);
 }
 .modal-backdrop.show .modal{transform:scale(1) translateY(0)}
 .modal-title{font-size:15px;font-weight:700;margin-bottom:0.75rem}
+.modal-mode-group{
+  display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;
+  padding:10px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);
+}
+.modal-radio{
+  display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer;user-select:none;
+}
+.modal-radio input{margin-top:3px;accent-color:var(--accent)}
+.modal-radio-sub{display:block;font-size:11px;color:var(--text-sub);margin-top:1px}
 .modal-input{
   width:100%;padding:8px 12px;font-size:14px;
   border:1px solid var(--border);border-radius:8px;
@@ -409,6 +436,11 @@ body{
 <div class="app-header">
   <div class="app-logo" id="app-logo">見</div>
   <div class="app-title" id="app-title">見積書作成</div>
+  <div class="editing-badge" id="editing-badge" style="display:none">
+    <span>📝 編集中:</span>
+    <span class="editing-badge-text" id="editing-badge-text"></span>
+    <button type="button" class="editing-badge-clear" onclick="clearCurrentDoc()" title="新規作成モードに戻す">✕</button>
+  </div>
   <div class="doc-type-wrap">
     <span class="doc-type-label">書類の種類</span>
     <select class="doc-type-select" id="doc-type" onchange="switchDocType(this.value)">
@@ -417,6 +449,9 @@ body{
       <option value="delivery">📦 納品書</option>
       <option value="receipt">💴 領収書</option>
     </select>
+    <button type="button" class="btn btn-sm" onclick="newDocument()" title="内容をクリアして新しい書類を作成">
+      <span>✨</span><span>新規作成</span>
+    </button>
     <button type="button" class="btn btn-sm" onclick="document.getElementById('open-doc-input').click()">
       <span>📂</span><span>PCから開く</span>
     </button>
@@ -586,9 +621,9 @@ body{
   </div>
 
   <div class="actions">
-    <button type="button" class="btn" onclick="openSaveModal()"><span>💾</span><span>書類を保存</span></button>
+    <button type="button" class="btn" onclick="openSaveModal()"><span>💾</span><span id="btn-save-label">書類を保存</span></button>
     <button type="button" class="btn" onclick="switchTab('preview')"><span>プレビューを見る →</span></button>
-    <button type="button" class="btn-primary" onclick="printPDF()"><span>🖨</span><span>PDF作成・印刷</span></button>
+    <button type="button" class="btn-primary" onclick="printPDF()"><span>🖨</span><span>PDF作成・印刷（A4縦1枚）</span></button>
   </div>
 </div>
 
@@ -598,7 +633,7 @@ body{
   <div class="actions" style="margin-top:1.25rem;align-items:center">
     <span style="font-size:12px;color:var(--text-hint);margin-right:auto">印刷できない場合は Ctrl+P（Mac: ⌘+P）をお試しください</span>
     <button type="button" class="btn" onclick="switchTab('edit')"><span>← 編集に戻る</span></button>
-    <button type="button" class="btn-primary" onclick="printPDF()"><span>🖨</span><span>PDF作成・印刷</span></button>
+    <button type="button" class="btn-primary" onclick="printPDF()"><span>🖨</span><span>PDF作成・印刷（A4縦1枚）</span></button>
   </div>
 </div>
 
@@ -625,10 +660,26 @@ body{
 <div class="modal-backdrop" id="save-modal">
   <div class="modal">
     <div class="modal-title">書類を保存する</div>
+    <div class="modal-mode-group" id="save-mode-group" style="display:none">
+      <label class="modal-radio">
+        <input type="radio" name="save-mode" value="overwrite" checked onchange="onSaveModeChange()">
+        <div>
+          <strong>上書き保存（既存を更新）</strong>
+          <span class="modal-radio-sub" id="overwrite-target-label">現在の書類内容を最新の状態に更新します</span>
+        </div>
+      </label>
+      <label class="modal-radio">
+        <input type="radio" name="save-mode" value="new" onchange="onSaveModeChange()">
+        <div>
+          <strong>新規保存（別ファイルとして保存）</strong>
+          <span class="modal-radio-sub">元の書類は残したまま、新しい書類として追加します</span>
+        </div>
+      </label>
+    </div>
     <input class="modal-input" id="save-name-input" placeholder="書類名（例：EST-2026-001 〇〇株式会社 見積書）" maxlength="80">
     <label class="modal-check">
       <input type="checkbox" id="save-to-pc-check" checked>
-      <span>PCにもファイル（.json）として保存する</span>
+      <span>PCにもファイル（.json）としてダウンロードする</span>
     </label>
     <div class="modal-actions">
       <button type="button" class="btn" onclick="closeSaveModal()">キャンセル</button>
@@ -646,6 +697,8 @@ let items   = [];
 let nextId  = 1;
 let taxMode = 'excl';
 let docType = 'estimate'; // 'estimate' | 'invoice' | 'delivery' | 'receipt'
+let currentDocId   = null; // 編集中の保存済み書類ID（nullなら新規）
+let currentDocName = '';
 let toastTimer = null;
 
 const SK_FROM    = 'doc_from_info';
@@ -709,6 +762,51 @@ function showToast(msg){
   toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
+// ===== CURRENT EDITING STATE =====
+function setCurrentDoc(id, name){
+  currentDocId   = id;
+  currentDocName = name || '';
+  const badge    = document.getElementById('editing-badge');
+  const textEl   = document.getElementById('editing-badge-text');
+  const saveLbl  = document.getElementById('btn-save-label');
+  if(id !== null){
+    badge.style.display = 'inline-flex';
+    textEl.textContent  = currentDocName;
+    saveLbl.textContent = '上書き・保存';
+  } else {
+    badge.style.display = 'none';
+    textEl.textContent  = '';
+    saveLbl.textContent = '書類を保存';
+  }
+}
+
+function clearCurrentDoc(){
+  setCurrentDoc(null, '');
+  showToast('✨ 新規保存モードに切り替えました');
+}
+
+function newDocument(){
+  if(!confirm('入力内容をクリアして新しい書類を作成しますか？（発行者・口座情報は保持されます）')) return;
+  setCurrentDoc(null, '');
+  const today = new Date();
+  const fd = d => d.toISOString().split('T')[0];
+  const future = new Date(today); future.setDate(future.getDate()+30);
+  s('doc-date', fd(today));
+  s('doc-date2', fd(future));
+  assignNextDocNo(docType);
+  ['to-name','to-addr','to-contact','to-email','shop-other-text'].forEach(id=>s(id,''));
+  document.getElementById('shop-rakuten').checked = false;
+  document.getElementById('shop-yahoo').checked   = false;
+  document.getElementById('shop-other').checked   = false;
+  s('notes', DOC_CONFIG[docType].defaultNotes);
+  items = [];
+  nextId = 1;
+  addItem('', 1, 0);
+  renderListPanel();
+  switchTab('edit');
+  showToast('✨ 新しい書類を作成しました');
+}
+
 // ===== SINGLE DOCUMENT FILE SAVE / LOAD =====
 function downloadSnapshotFile(snap){
   const blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
@@ -733,9 +831,25 @@ function openDocFromFile(e){
       }
       if(!confirm(`「${data.name || file.name}」を呼び出します。\n現在の入力内容は上書きされます。よろしいですか？`)) return;
       applySnapshot(data);
+
+      // リスト内に同じIDの書類があれば紐付け、なければ新規IDを割り当てて紐付け
+      const list = getSavedList();
+      const existing = data.id ? list.find(item => item.id === data.id) : null;
+      if(existing){
+        setCurrentDoc(existing.id, data.name || existing.name);
+      } else {
+        const newId = data.id || Date.now();
+        const docName = data.name || file.name.replace(/\.json$/i, '');
+        const importedSnap = { ...data, id: newId, name: docName };
+        list.push(importedSnap);
+        setSavedList(list);
+        setCurrentDoc(newId, docName);
+      }
+
+      renderListPanel();
       closeListPanel();
       switchTab('edit');
-      showToast(`📂 「${data.name || file.name}」を読み込みました`);
+      showToast(`📂 「${currentDocName}」を読み込みました`);
     }catch(err){
       showToast('⚠️ ファイルの読み込みに失敗しました');
     }
@@ -1026,9 +1140,9 @@ function getSavedList(){
 }
 function setSavedList(list){ localStorage.setItem(SK_LIST, JSON.stringify(list)); }
 
-function collectSnapshot(name){
+function collectSnapshot(name, existingId = null){
   return {
-    id: Date.now(),
+    id: existingId || Date.now(),
     name: name,
     savedAt: new Date().toISOString(),
     docType,
@@ -1100,7 +1214,9 @@ function renderListPanel(){
     badge.style.display = 'none';
   }
 
-  const filtered = [...list].reverse().filter(snap=>{
+  // 更新日時（savedAt）の新しい順に並べる
+  const sorted = [...list].sort((a,b) => new Date(b.savedAt) - new Date(a.savedAt));
+  const filtered = sorted.filter(snap=>{
     if(!query) return true;
     const target = [snap.name, snap.fields?.['to-name'], snap.fields?.['doc-no']].filter(Boolean).join(' ').toLowerCase();
     return target.includes(query);
@@ -1117,15 +1233,16 @@ function renderListPanel(){
     const cfg = DOC_CONFIG[snap.docType] || DOC_CONFIG.estimate;
     const total = snap.items ? snap.items.reduce((s,i)=>s+i.qty*i.price,0) : 0;
     const totalStr = '¥'+Math.round(snap.taxMode==='excl' ? total*1.1 : total).toLocaleString('ja-JP');
-    return `<div class="saved-card" onclick="loadSnapshot(${snap.id})">
+    const isActive = snap.id === currentDocId;
+    return `<div class="saved-card ${isActive ? 'active-doc' : ''}" onclick="loadSnapshot(${snap.id})">
       <div class="saved-card-top">
-        <div class="saved-card-name" title="${esc(snap.name)}">${esc(snap.name)}</div>
+        <div class="saved-card-name" title="${esc(snap.name)}">${isActive ? '📝 ' : ''}${esc(snap.name)}</div>
         <button type="button" class="saved-card-btn" onclick="event.stopPropagation();downloadSavedById(${snap.id})" title="PCにファイル保存">⬇</button>
         <button type="button" class="saved-card-btn del" onclick="event.stopPropagation();deleteSnapshot(${snap.id})" title="削除">✕</button>
       </div>
       <div class="saved-card-meta">
         <span class="saved-card-badge ${cfg.badgeClass}">${cfg.docName}</span>
-        <span>${dateStr}</span>
+        <span>更新: ${dateStr}</span>
         <span style="margin-left:auto;font-weight:600;color:var(--text)">${totalStr}</span>
       </div>
     </div>`;
@@ -1146,6 +1263,8 @@ function loadSnapshot(id){
   if(!snap) return;
   if(!confirm(`「${snap.name}」を読み込みます。\n現在の内容は上書きされます。よろしいですか？`)) return;
   applySnapshot(snap);
+  setCurrentDoc(snap.id, snap.name);
+  renderListPanel();
   closeListPanel();
   switchTab('edit');
   showToast(`📋 「${snap.name}」を呼び出しました`);
@@ -1157,6 +1276,9 @@ function deleteSnapshot(id){
   if(!snap) return;
   if(!confirm(`「${snap.name}」をリストから削除しますか？`)) return;
   setSavedList(list.filter(s=>s.id!==id));
+  if(currentDocId === id){
+    setCurrentDoc(null, '');
+  }
   renderListPanel();
   showToast('🗑 リストから削除しました');
 }
@@ -1179,27 +1301,81 @@ function closeListPanel(){
 
 // ===== SAVE MODAL =====
 function openSaveModal(){
-  document.getElementById('save-name-input').value = buildDefaultSaveName();
+  const modeGroup = document.getElementById('save-mode-group');
+  const nameInput = document.getElementById('save-name-input');
+
+  if(currentDocId !== null){
+    modeGroup.style.display = 'flex';
+    document.querySelector('input[name="save-mode"][value="overwrite"]').checked = true;
+    document.getElementById('overwrite-target-label').textContent = `対象：「${currentDocName}」を最新に更新`;
+    nameInput.value = currentDocName || buildDefaultSaveName();
+  } else {
+    modeGroup.style.display = 'none';
+    nameInput.value = buildDefaultSaveName();
+  }
+
   document.getElementById('save-modal').classList.add('show');
-  setTimeout(()=>document.getElementById('save-name-input').select(),100);
+  setTimeout(()=>nameInput.select(), 100);
 }
+
+function onSaveModeChange(){
+  const mode = document.querySelector('input[name="save-mode"]:checked')?.value;
+  const nameInput = document.getElementById('save-name-input');
+  if(mode === 'overwrite'){
+    nameInput.value = currentDocName || buildDefaultSaveName();
+  } else {
+    // 新規保存に切り替えたら次の番号候補を含むデフォルト名を提案
+    const nextNo = peekNextDocNo(docType);
+    const cfg    = DOC_CONFIG[docType] || DOC_CONFIG.estimate;
+    const toName = g('to-name').replace(/\s*(御中|様|殿|先生)\s*$/, '').trim();
+    nameInput.value = [nextNo, toName, cfg.docName].filter(Boolean).join(' ');
+  }
+}
+
 function closeSaveModal(){
   document.getElementById('save-modal').classList.remove('show');
 }
+
 function confirmSave(){
   const name = document.getElementById('save-name-input').value.trim();
   if(!name){ showToast('⚠️ 書類名を入力してください'); return; }
 
-  const currentNo = g('doc-no');
-  const expectedNo = peekNextDocNo(docType);
-  if(currentNo === expectedNo){
-    consumeDocNo(docType);
-  }
+  const isOverwrite = currentDocId !== null &&
+    document.querySelector('input[name="save-mode"]:checked')?.value === 'overwrite';
 
-  const snap = collectSnapshot(name);
   const list = getSavedList();
-  list.push(snap);
-  setSavedList(list);
+  let snap;
+
+  if(isOverwrite){
+    // 上書き保存：既存IDを維持し、番号カウンターは進めない
+    snap = collectSnapshot(name, currentDocId);
+    const idx = list.findIndex(item => item.id === currentDocId);
+    if(idx !== -1){
+      list[idx] = snap;
+    } else {
+      list.push(snap);
+    }
+    setSavedList(list);
+    setCurrentDoc(snap.id, name);
+  } else {
+    // 新規保存：もし現在の書類番号が新規採番候補と一致していればカウンターを進める
+    const currentNo = g('doc-no');
+    const expectedNo = peekNextDocNo(docType);
+    if(currentNo === expectedNo){
+      consumeDocNo(docType);
+    } else if(currentDocId !== null){
+      // 既存書類からの「新規保存（複製）」で番号が古いままなら自動で新しい番号を振る
+      const newNo = peekNextDocNo(docType);
+      s('doc-no', newNo);
+      consumeDocNo(docType);
+    }
+
+    snap = collectSnapshot(name);
+    list.push(snap);
+    setSavedList(list);
+    // 保存後もそのまま上書き編集できるよう編集中IDとして保持
+    setCurrentDoc(snap.id, name);
+  }
 
   const toPC = document.getElementById('save-to-pc-check').checked;
   if(toPC){
@@ -1208,9 +1384,9 @@ function confirmSave(){
 
   closeSaveModal();
   renderListPanel();
-  assignNextDocNo(docType);
 
-  showToast(toPC ? `💾 「${name}」をPCとリストに保存しました` : `💾 「${name}」をリストに保存しました`);
+  const actionLabel = isOverwrite ? '上書き保存' : '新規保存';
+  showToast(toPC ? `💾 「${name}」を${actionLabel}＋PCダウンロードしました` : `💾 「${name}」を${actionLabel}しました`);
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
@@ -1359,57 +1535,91 @@ function switchTab(tab){
   if(tab==='preview') buildPreview();
 }
 
-// ===== PRINT / PDF =====
+// ===== PRINT / PDF (A4縦1枚固定) =====
 function printPDF(){
   buildPreview();
   const content = document.getElementById('pane-preview-content').innerHTML;
   const cfg     = DOC_CONFIG[docType] || DOC_CONFIG.estimate;
 
-  const win = window.open('', '_blank', 'width=900,height=700');
+  const win = window.open('', '_blank', 'width=820,height=1050');
   if(!win){ showToast('⚠️ ポップアップを許可してください'); return; }
   win.document.write(`<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><title>${cfg.docName}</title>
 <style>
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  :root{--bg:${cfg.bg};--border:${cfg.border};--border-light:${cfg.borderLight};--text:#1a1916;--text-sub:#6b6860;--text-hint:#a09e9a;--accent:${cfg.accent};--accent-light:${cfg.accentLight};--radius:8px;}
-  body{font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Meiryo',sans-serif;background:#fff;color:var(--text);font-size:14px;padding:0;margin:0}
-  .p-wrap{padding:2rem 2.5rem;font-size:13px;line-height:1.8}
-  .p-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem}
-  .p-badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;background:var(--accent-light);color:var(--accent);font-weight:600;letter-spacing:0.08em;margin-bottom:8px}
-  .p-title{font-size:28px;font-weight:700;letter-spacing:-0.02em;line-height:1}
-  .p-no{font-size:12px;color:var(--text-sub);margin-top:6px}
-  .p-meta{font-size:12px;color:var(--text-sub);text-align:right;line-height:2}
-  .p-divider{border:none;border-top:1px solid var(--border-light);margin:1.5rem 0}
-  .p-parties{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:1.5rem}
-  .p-party-label{font-size:10px;font-weight:600;color:var(--text-hint);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px}
-  .p-name{font-size:15px;font-weight:600}
-  .p-sub{font-size:12px;color:var(--text-sub);margin-top:2px}
-  .p-info-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;padding:1rem;background:var(--bg);border-radius:6px;margin-bottom:1.5rem}
-  .p-info-item label{font-size:10px;font-weight:600;color:var(--text-hint);letter-spacing:0.08em;text-transform:uppercase}
-  .p-info-item div{font-size:13px;margin-top:2px}
-  .p-bank-box{padding:1rem 1.25rem;background:#edf2ff;border:1px solid #b0c4f5;border-radius:6px;margin-top:1.5rem}
-  .p-bank-title{font-size:10px;font-weight:700;color:#2251a8;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px}
-  .p-bank-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem 1rem}
-  .p-bank-item label{font-size:10px;color:#6280c0;font-weight:600;letter-spacing:0.05em}
-  .p-bank-item div{font-size:13px;color:#1a1916;margin-top:1px;font-weight:500}
-  .p-receipt-box{display:flex;justify-content:space-between;align-items:center;gap:1.5rem;padding:1.25rem 1.5rem;background:#faefef;border:1px solid #e6c5c5;border-radius:6px;margin-bottom:1.5rem}
-  .p-receipt-proviso{font-size:14px;font-weight:600;color:#1a1916}
-  .p-receipt-sub{font-size:12px;color:#6b6860;margin-top:4px}
-  .p-stamp-box{width:72px;height:86px;border:1px dashed #b58d8d;border-radius:4px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#9e7373;line-height:1.4;flex-shrink:0;background:#fff}
+  :root{--bg:${cfg.bg};--border:${cfg.border};--border-light:${cfg.borderLight};--text:#1a1916;--text-sub:#6b6860;--text-hint:#a09e9a;--accent:${cfg.accent};--accent-light:${cfg.accentLight};--radius:6px;}
+  html, body{
+    width:100%;
+    font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Meiryo',sans-serif;
+    background:#fff;
+    color:var(--text);
+    font-size:12px;
+    padding:0;
+    margin:0;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  #sheet{
+    width:100%;
+    page-break-inside:avoid;
+    break-inside:avoid;
+  }
+  .p-wrap{padding:6px 10px;font-size:12px;line-height:1.55}
+  .p-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.9rem}
+  .p-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;background:var(--accent-light);color:var(--accent);font-weight:600;letter-spacing:0.08em;margin-bottom:4px}
+  .p-title{font-size:23px;font-weight:700;letter-spacing:-0.02em;line-height:1.1}
+  .p-no{font-size:11px;color:var(--text-sub);margin-top:4px}
+  .p-meta{font-size:11px;color:var(--text-sub);text-align:right;line-height:1.7}
+  .p-divider{border:none;border-top:1px solid var(--border-light);margin:0.8rem 0}
+  .p-parties{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:0.9rem}
+  .p-party-label{font-size:9px;font-weight:600;color:var(--text-hint);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:2px}
+  .p-name{font-size:14px;font-weight:600}
+  .p-sub{font-size:11px;color:var(--text-sub);margin-top:1px;line-height:1.45}
+  .p-info-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;padding:0.65rem 0.85rem;background:var(--bg);border-radius:6px;margin-bottom:0.9rem}
+  .p-info-item label{font-size:9px;font-weight:600;color:var(--text-hint);letter-spacing:0.08em;text-transform:uppercase}
+  .p-info-item div{font-size:12px;margin-top:1px}
+  .p-bank-box{padding:0.65rem 0.9rem;background:#edf2ff;border:1px solid #b0c4f5;border-radius:6px;margin-top:0.85rem}
+  .p-bank-title{font-size:9px;font-weight:700;color:#2251a8;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px}
+  .p-bank-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.35rem 0.85rem}
+  .p-bank-item label{font-size:9px;color:#6280c0;font-weight:600;letter-spacing:0.05em}
+  .p-bank-item div{font-size:11.5px;color:#1a1916;margin-top:1px;font-weight:500}
+  .p-receipt-box{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:0.8rem 1rem;background:#faefef;border:1px solid #e6c5c5;border-radius:6px;margin-bottom:0.9rem}
+  .p-receipt-proviso{font-size:13px;font-weight:600;color:#1a1916}
+  .p-receipt-sub{font-size:11px;color:#6b6860;margin-top:2px}
+  .p-stamp-box{width:60px;height:72px;border:1px dashed #b58d8d;border-radius:4px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:9px;color:#9e7373;line-height:1.35;flex-shrink:0;background:#fff}
   .p-table{width:100%;border-collapse:collapse;margin-bottom:0}
-  .p-table th{font-size:11px;color:var(--text-sub);padding:8px 12px;border-bottom:1px solid var(--border);font-weight:600;letter-spacing:0.05em;background:var(--bg)}
+  .p-table th{font-size:10px;color:var(--text-sub);padding:5px 8px;border-bottom:1px solid var(--border);font-weight:600;letter-spacing:0.05em;background:var(--bg)}
   .p-table th:not(:first-child){text-align:right}
-  .p-table td{font-size:13px;padding:10px 12px;border-bottom:1px solid var(--border-light)}
+  .p-table td{font-size:11.5px;padding:6px 8px;border-bottom:1px solid var(--border-light)}
   .p-table td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
-  .p-totals{padding:1rem;background:var(--bg);border-radius:0 0 var(--radius) var(--radius)}
-  .p-total-row{display:flex;justify-content:space-between;padding:3px 0;font-size:13px;color:var(--text-sub)}
-  .p-total-grand{display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:var(--text);padding-top:8px;margin-top:6px;border-top:1px solid var(--border)}
-  .p-grand-num{font-size:20px}
-  .p-notes-box{margin-top:1.5rem;padding:1rem;background:var(--bg);border-radius:6px;font-size:12px;color:var(--text-sub);white-space:pre-wrap;line-height:1.8}
-  .p-notes-box strong{display:block;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-hint);margin-bottom:4px}
+  .p-totals{padding:0.65rem 0.85rem;background:var(--bg);border-radius:0 0 var(--radius) var(--radius)}
+  .p-total-row{display:flex;justify-content:space-between;padding:2px 0;font-size:11.5px;color:var(--text-sub)}
+  .p-total-grand{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;font-weight:700;color:var(--text);padding-top:5px;margin-top:4px;border-top:1px solid var(--border)}
+  .p-grand-num{font-size:17px}
+  .p-notes-box{margin-top:0.85rem;padding:0.65rem 0.85rem;background:var(--bg);border-radius:6px;font-size:10.5px;color:var(--text-sub);white-space:pre-wrap;line-height:1.5}
+  .p-notes-box strong{display:block;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-hint);margin-bottom:2px}
 </style></head>
-<body><div id="pane-preview-content">${content}</div>
-<script>window.onload=function(){setTimeout(function(){window.print();window.close();},400);};<\/script>
+<body><div id="sheet">${content}</div>
+<script>
+window.onload = function(){
+  // A4縦（余白10mm上下除き高さ約277mm ≒ 1045px）に1枚で収まるよう自動調整
+  var sheet = document.getElementById('sheet');
+  var maxA4HeightPx = 1020;
+  var actualHeight = sheet.scrollHeight;
+  if(actualHeight > maxA4HeightPx){
+    var scale = maxA4HeightPx / actualHeight;
+    sheet.style.zoom = scale;
+  }
+  setTimeout(function(){
+    window.print();
+    window.close();
+  }, 350);
+};
+<\/script>
 </body></html>`);
   win.document.close();
 }
